@@ -4,17 +4,17 @@ const path = require('path');
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-// Fix: @expo/metro-runtime uses require() on getDevServer expecting a plain CJS function,
-// but react-native 0.81 exports it as ESM (export default), so require() returns
-// { default: fn } instead of fn itself — causing "getDevServer is not a function" crash.
-// Redirect ALL requires of getDevServer to our shim (except from the shim itself).
+// Fix: @expo/metro-runtime@4.0.1 uses require() expecting CJS exports,
+// but react-native 0.81 exports modules as ESM (export default).
+// We redirect the entire messageSocket.native module to a patched version
+// that correctly accesses .default on all require() calls.
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (
-    moduleName === 'react-native/Libraries/Core/Devtools/getDevServer' &&
-    !context.originModulePath.includes('shims/getDevServer')
+    context.originModulePath.includes('@expo/metro-runtime') &&
+    moduleName.includes('messageSocket')
   ) {
     return {
-      filePath: path.resolve(__dirname, 'shims/getDevServer.js'),
+      filePath: path.resolve(__dirname, 'shims/messageSocket.native.js'),
       type: 'sourceFile',
     };
   }
